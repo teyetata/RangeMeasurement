@@ -1,7 +1,7 @@
 import cv2, time, os, tensorflow as tf
 import numpy as np
 from tensorflow.python.keras.utils.data_utils import get_file
-
+import pyttsx3
 np.random.seed(123)
 
 class Detector:
@@ -10,6 +10,9 @@ class Detector:
         self.colorList = None
         self.model = None
         self.modelName = ""
+        self.tts_engine = pyttsx3.init() 
+        self.tts_engine.setProperty('rate', 150)  # Set speech rate
+        self.tts_engine.setProperty('volume', 1)  # Set volume (0.0 to 1.0)
     
     def readClasses(self, classesFilePath):
         with open(classesFilePath, 'r') as f:
@@ -68,10 +71,10 @@ class Detector:
         
         # Dictionary referensi objek (kalibrasi sesuai kebutuhan Anda)
         REFERENCE_SIZES = {
-            "person": {"type": "height", "ref_px": 500, "ref_distance": 1.0},
-            "car": {"type": "width", "ref_px": 300, "ref_distance": 1.0},
+            "person": {"type": "height", "ref_px": 170, "ref_distance": 1.0},
+            "car": {"type": "width", "ref_px": 200, "ref_distance": 1.0},
             # Tambahkan objek lain sesuai kebutuhan
-            "default": {"type": "width", "ref_px": 200, "ref_distance": 1.0}
+            "default": {"type": "width", "ref_px": 100, "ref_distance": 1.0}
         }
         
         if len(bboxIdx) != 0:
@@ -103,17 +106,19 @@ class Detector:
                 ref_data = REFERENCE_SIZES.get(classLabelText, REFERENCE_SIZES["default"])
                 
                 try:
+                    focal_length = 500
                     if ref_data["type"] == "height":
-                        distance = (ref_data["ref_px"] * ref_data["ref_distance"]) / bbox_height
+                        distance = (focal_length * ref_data["ref_distance"]) / bbox_height
                     else:  # width
-                        distance = (ref_data["ref_px"] * ref_data["ref_distance"]) / bbox_width
+                        distance = (focal_length * ref_data["ref_distance"]) / bbox_width
                     
                     distance_text = f"{distance:.2f}m"
                 except ZeroDivisionError:
                     distance_text = "N/A"
                 
                 displayText = f'{classLabelText}: {distance_text}'
-                
+                self.tts_engine.say(displayText)
+                self.tts_engine.runAndWait()
                 # Draw rectangle and text
                 cv2.rectangle(image, (xmin_px, ymin_px), (xmax_px, ymax_px), 
                             color=classColor, thickness=2)
@@ -149,7 +154,7 @@ class Detector:
                         continue  # Keep trying for webcam
                     else:
                         break  # End of video file
-                
+                frame = cv2.flip(frame, 1)  # Mirroring frame
                 # Dapatkan ukuran layar
                 screen_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 screen_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
